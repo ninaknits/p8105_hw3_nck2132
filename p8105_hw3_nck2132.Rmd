@@ -32,6 +32,43 @@ scale_fill_discrete = scale_fill_viridis_d
 ```
 
 
-#Load in Data set 
-data("ny_noaa")
+#Question 1
 
+```{r, Load Data}
+data("ny_noaa")
+```
+
+```{r, clean}
+ny_noaa_clean = 
+ny_noaa |> 
+  separate(date, into = c("year", "month", "day"), sep = "-") |> 
+  mutate (
+    prcp = (prcp) /10,
+    tmax = as.numeric(tmax) /10, 
+    tmax = as.numeric(tmin) /10, 
+  ) |> 
+  rename (
+    weather_station_id = id,
+    prcp_mm = prcp, 
+    snowfall_mm = snow, 
+    snow_depth_mm = snwd, 
+    prcp_mm = prcp, 
+    tmax_c = tmax, 
+    tmin_c = tmin 
+   )
+
+```
+
+```{r, Summary}
+summary_skimr= 
+  skimr::skim(ny_noaa_clean)
+summary_skimr
+```
+
+```{r, Summary P2}
+nrow(ny_noaa_clean)    
+ncol(ny_noaa_clean) 
+names(ny_noaa_clean)
+```
+
+The NOAA dataset contains weather data from National Oceanic and Atmospheric Association (NOAA) in New York. It has `r nrow(ny_noaa_clean)` observations and `r ncol(ny_noaa_clean)` with variables `r names(ny_noaa_clean)`. There is no missing data for weather station ID, year, month, or day. Missing data is a significant issue for the other variables: `r with(ny_noaa_clean, round(mean(is.na(prcp_mm)) * 100, 1))`% of precipitation, `r with(ny_noaa_clean, round(mean(is.na(snowfall_mm)) * 100, 1))`% of snowfall, `r with(ny_noaa_clean, round(mean(is.na(snow_depth_mm)) * 100, 1))`% of snow depth, `r with(ny_noaa_clean, round(mean(is.na(tmax_c)) * 100, 1))`% of maximum temperature, and `r with(ny_noaa_clean, round(mean(is.na(tmin_c)) * 100, 1))`% of minimum temperature values are missing.
