@@ -9,6 +9,7 @@ output: github_document
 ```{r setup}
 library(tidyverse)
 library(p8105.datasets)
+library(patchwork)
 ```
 
 ## Setting Options
@@ -45,7 +46,7 @@ ny_noaa |>
   mutate (
     prcp = (prcp) /10,
     tmax = as.numeric(tmax) /10, 
-    tmax = as.numeric(tmin) /10, 
+    tmin = as.numeric(tmin) /10, 
   ) |> 
   rename (
     weather_station_id = id,
@@ -72,3 +73,53 @@ names(ny_noaa_clean)
 ```
 
 The NOAA dataset contains weather data from National Oceanic and Atmospheric Association (NOAA) in New York. It has `r nrow(ny_noaa_clean)` observations and `r ncol(ny_noaa_clean)` with variables `r names(ny_noaa_clean)`. There is no missing data for weather station ID, year, month, or day. Missing data is a significant issue for the other variables: `r with(ny_noaa_clean, round(mean(is.na(prcp_mm)) * 100, 1))`% of precipitation, `r with(ny_noaa_clean, round(mean(is.na(snowfall_mm)) * 100, 1))`% of snowfall, `r with(ny_noaa_clean, round(mean(is.na(snow_depth_mm)) * 100, 1))`% of snow depth, `r with(ny_noaa_clean, round(mean(is.na(tmax_c)) * 100, 1))`% of maximum temperature, and `r with(ny_noaa_clean, round(mean(is.na(tmin_c)) * 100, 1))`% of minimum temperature values are missing.
+
+```{r, Jan vs July Plot}
+ny_noaa_clean |>
+   mutate(
+    month = as.numeric(month),
+    year = as.numeric(year)
+  ) |>
+  filter(month == 1 | month == 7) |>
+   mutate(month = factor(month, levels = c(1, 7), labels = c("January", "July"))) |>
+  group_by(weather_station_id, year, month) |>
+  summarize(mean_tmax = mean(tmax_c, na.rm = TRUE), .groups = "drop") |>
+  filter(!is.nan(mean_tmax)) |>
+  ggplot(aes(x = year, y = mean_tmax, group = weather_station_id, color=month)) +
+  geom_line(alpha = 0.3) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  facet_wrap(~ month, ncol = 1, scales = "free_y") +
+  labs(
+    title = "Average maximum temperature by station and year in January vs. July",
+    x = "Year",
+    y = "Average maximum temperature (C)"
+  )
+```
+
+Temperature in July across weather stations appears relatively stable, while in January the temperature across weather stations appears to fluctuate more as it has more ridges and dips in temperature. Overall across weather stations the rise and falls of the temperature appear similar in July and January. Interestingly, there is a notable drop in temperature in mid January. There are two distinct outliers: one in early to mid July around 1988 as well as a on outlier in late July around 2005.
+
+```{r, fig.width = 10, fig.height = 10}
+p1 = ny_noaa_clean |>
+  ggplot(aes(x = tmax_c, y = tmin_c)) +
+  geom_hex() +
+  scale_fill_viridis_c() +
+  labs(
+    title = "Maximum vs. Minimum Daily Temperature",
+    x = "Maximum Temperature (C)",
+    y = "Minimum Temperature (C)"
+  )
+p2 = ny_noaa_clean |>
+  filter(snowfall_mm > 0, snowfall_mm < 100) |>
+  ggplot(aes(x = year, y = snowfall_mm)) +
+  geom_boxplot(fill = "blue", alpha = 0.5) +
+  labs(
+    title = "Snowfall (0-100 mm) by year",
+    x = "Year",
+    y = "Snowfall (mm)"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+p1/p2
+```
+Because the dataset has over 2 million observations, a scatterplot for plot 1 would have severe overplotting, so I used geom_hex() instead. It divides the plot into hexagonal bins and colors each bin by the number of days that fall inside it, so the full dataset is shown and areas where observations are concentrated stand out.
+
+##Question 2
