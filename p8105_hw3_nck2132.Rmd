@@ -113,7 +113,7 @@ p2 = ny_noaa_clean |>
   ggplot(aes(x = year, y = snowfall_mm)) +
   geom_boxplot(fill = "blue", alpha = 0.5) +
   labs(
-    title = "Snowfall (0-100 mm) by year",
+    title = "Snowfall (0-100 mm) by Year",
     x = "Year",
     y = "Snowfall (mm)"
   ) +
@@ -123,3 +123,53 @@ p1/p2
 Because the dataset has over 2 million observations, a scatterplot for plot 1 would have severe overplotting, so I used geom_hex() instead. It divides the plot into hexagonal bins and colors each bin by the number of days that fall inside it, so the full dataset is shown and areas where observations are concentrated stand out.
 
 ##Question 2
+
+Load Data Sets
+
+```{r}
+nhanes_covar = read_csv("Data/nhanes_covar.csv",
+skip=4)
+nhanes_accel = read_csv("Data/nhanes_accel.csv")
+```
+
+Clean Data 
+
+```{r}
+nhanes_covar_tidy = nhanes_covar |>
+  janitor::clean_names() |>
+  filter (age >= 21) |> 
+  drop_na(sex, age, bmi, education) |>
+  mutate(
+    sex = case_match(
+      sex,
+      1 ~ "male",
+      2 ~ "female"
+    ),
+    sex = factor(sex, levels = c("male", "female")),
+    education = case_match(
+    education,
+      1 ~ "less than high school",
+      2 ~ "high school equivalent",
+      3 ~ "more than high school"),
+     education = factor(
+     education,
+     levels = c("less than high school",
+               "high school equivalent",
+               "more than high school"),
+    ordered = TRUE
+  )
+) |>
+  rename(education_level = education)
+
+```
+```{r}
+  nhanes_accel_tidy = nhanes_accel |>
+  janitor::clean_names()
+```
+
+Join Datasets
+
+```{r}
+data_prob_2 = inner_join(nhanes_covar_tidy, nhanes_accel_tidy, by = "seqn")
+```
+
