@@ -126,7 +126,7 @@ Because the dataset has over 2 million observations, a scatterplot for plot 1 wo
 
 Load Data Sets
 
-```{r}
+```{r Setup}
 nhanes_covar = read_csv("Data/nhanes_covar.csv",
 skip=4)
 nhanes_accel = read_csv("Data/nhanes_accel.csv")
@@ -134,7 +134,7 @@ nhanes_accel = read_csv("Data/nhanes_accel.csv")
 
 Clean Data 
 
-```{r}
+```{r Tidy Covar}
 nhanes_covar_tidy = nhanes_covar |>
   janitor::clean_names() |>
   filter (age >= 21) |> 
@@ -162,20 +162,20 @@ nhanes_covar_tidy = nhanes_covar |>
   rename(education_level = education)
 
 ```
-```{r}
+```{r Tidy Accel}
   nhanes_accel_tidy = nhanes_accel |>
   janitor::clean_names()
 ```
 
 Join Datasets
 
-```{r}
+```{r Clean}
 data_prob_2 = inner_join(nhanes_covar_tidy, nhanes_accel_tidy, by = "seqn")
 ```
 
 Table + visualization
 
-```{r}
+```{r Plot}
 edu_by_gender = 
 data_prob_2 |>
   count(education_level, sex) |>
@@ -203,7 +203,7 @@ edu_by_age_gender
 
 In general, there are more women than males that have more than high school education and high school equivalent and males appear to be relatively younger in the dataset as well compared to females. Less than high school education level, appears to be simlarly distributed by age and gender.  
 
-```{r}
+```{r CLean}
 data_prob_2_tidy = data_prob_2 |>
   mutate(total_activity = rowSums(across(starts_with("min")))) |> 
   select(seqn, sex, age, bmi, education_level, total_activity) |> 
@@ -225,7 +225,7 @@ Based on the trend lines, total activity appears to have a relatively similar di
 
 Plot 24 hour activity by education level and sex
 
-```{r}
+```{r Plot 24 Hour Activity}
 data_prob_2_long = data_prob_2 |>
   pivot_longer(
     cols = starts_with("min"),
@@ -256,3 +256,116 @@ data_prob_2_long |>
 ```
 Plotting every participant’s activity made the trends hard to see, because a few extreme values stretched the y-axis and compressed the group patterns. Instead, I plotted the mean activity at each minute of the day for each education level and sex, with a smooth trend overlaid. This zoomed the plot in on the typical pattern. Across all education levels and both sexes, activity follows a similar daily shape: it is lowest overnight, rises in the morning, stays fairly steady through the day, and declines in the evening. The trend lines for men and women are close together within each education level, and the education levels look similar to each other, so there is little visible difference in total activity stratified by sex or education.
 
+
+##Question 3
+
+Load Data Sets
+
+```{r Load}
+citi_jan2020 = read_csv("data/citibike/Jan 2020 Citi.csv")
+citi_jan2024 = read_csv("data/citibike/Jan 2024 Citi.csv")
+citi_july2020 = read_csv("data/citibike/July 2020 Citi.csv")
+citi_july2024 = read_csv("data/citibike/July 2024 Citi.csv")
+```
+
+Tidy Datasets
+
+```{r Clean Citi Data}
+citi_jan2020_tidy= 
+  citi_jan2020 |> 
+    janitor::clean_names()
+
+citi_jan2024_tidy= 
+  citi_jan2024 |> 
+    janitor::clean_names()
+
+citi_july2020_tidy= 
+  citi_july2020 |> 
+    janitor::clean_names()
+
+citi_july2024_tidy= 
+  citi_july2024 |> 
+    janitor::clean_names()
+```
+
+Join Datasets
+```{r Join}
+citi_data = bind_rows(
+  citi_jan2020_tidy |> mutate(year = 2020, month = "January"),
+  citi_jan2024_tidy |> mutate(year = 2024, month = "January"),
+  citi_july2020_tidy |> mutate(year = 2020, month = "July"),
+  citi_july2024_tidy |> mutate(year = 2024, month = "July")
+)
+```
+
+Plot
+```{r Table1}
+citi_data_table=
+citi_data |> 
+ count(year, month, member_casual) |> 
+ pivot_wider(
+    names_from = member_casual,
+    values_from = n,
+    values_fill = 0
+  ) |> 
+    mutate(ride_totals = casual + member)
+citi_data_table
+```
+Based on this table, there were significantly less rides in January and July 2020 compared to those same months in 2024, which makes sense because NYC was impacted by COVID-19 and there were stay at home orders in place. In general, there were more rides in July compared to June in both 2020 and 2024, likely because the warmer weather encourages people to spend time outside. 
+
+Plot 5 Most Popular Start Stations
+
+```{r Table2}
+citi_data_table2 =
+citi_data |> 
+filter (month == "July", year == "2024") |> 
+count(start_station_name, name = "ride_totals", sort = TRUE) |>
+slice_head(n = 5)
+
+citi_data_table2
+```
+
+Affect of Days on the Week on Median Ride Duration
+
+```{r Plot Median Ride Duration}
+citi_data_plot = citi_data |>
+  group_by(weekdays, month, year) |>
+  summarize(median_duration = median(duration, na.rm = TRUE), .groups = "drop") |>
+  mutate(
+    weekdays = factor(weekdays,
+                      levels = c("Monday", "Tuesday", "Wednesday", "Thursday",
+                                 "Friday", "Saturday", "Sunday")),
+    year = factor(year)
+  ) |>
+  ggplot(aes(x = weekdays, y = median_duration, color = year, group = year)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ month) +
+  scale_x_discrete(labels = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")) +
+  labs(
+    title = "Median Ride Duration by Day of Week, Month, and Year",
+    x = "Day of Week",
+    y = "Median Ride Duration (min)",
+    color = "Year"
+  )
+
+citi_data_plot
+```
+
+This plot highlights that ride duration are consistently longer in 2020 and similarly rides are longer in July as compared to January. The longest ride consistent over time were July 2020. This is interesting because I would have expected ride durations to be longer in 2024 when there was less restrictions due to COVID-19.
+
+```{r Ride Duration Plot2}
+citi_2024_plot = citi_data |>
+  filter(year == 2024) |>
+  ggplot(aes(x = month, y = duration, fill = member_casual)) +
+  geom_boxplot(outlier.alpha = 0.1) +
+  facet_wrap(~ rideable_type) +
+  labs(
+    title = "Ride Duration by Month, Membership Status, and Bike Type (2024)",
+    x = "Month",
+    y = "Ride duration (minutes)",
+    fill = "Rider Type"
+  )
+citi_2024_plot
+```
+The distribution of ride duration is pretty similar between bike type (classic and electric), rider type (casual and member), and months January and July. The ride duration was consistently longer for casual riders across months and bike type. Similarly, July had longer or about the same ride durations across months and rider type. Members had a ride duration distribution that stayed relatively the same across months and bike type. 
