@@ -173,3 +173,86 @@ Join Datasets
 data_prob_2 = inner_join(nhanes_covar_tidy, nhanes_accel_tidy, by = "seqn")
 ```
 
+Table + visualization
+
+```{r}
+edu_by_gender = 
+data_prob_2 |>
+  count(education_level, sex) |>
+  pivot_wider(
+    names_from = sex,
+    values_from = n,
+    values_fill = 0
+  ) 
+```
+
+```{r}
+edu_by_age_gender = data_prob_2 |>
+  ggplot(aes(x = age, fill = sex)) +
+  geom_histogram(binwidth = 5, alpha = 0.6, position = "identity") +
+  facet_wrap(~ education_level, ncol = 1) +
+  labs(
+    title = "Age Distribution of Men and Women by Education Level",
+    x = "Age (years)",
+    y = "Number of participants",
+    fill = "Sex"
+  )
+
+edu_by_age_gender
+```
+
+In general, there are more women than males that have more than high school education and high school equivalent and males appear to be relatively younger in the dataset as well compared to females. Less than high school education level, appears to be simlarly distributed by age and gender.  
+
+```{r}
+data_prob_2_tidy = data_prob_2 |>
+  mutate(total_activity = rowSums(across(starts_with("min")))) |> 
+  select(seqn, sex, age, bmi, education_level, total_activity) |> 
+
+
+  ggplot(aes(x = age, y = total_activity, color= sex)) +
+  geom_point(alpha=0.5) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~ education_level, ncol = 1) +
+  labs(
+    title = "Total Activity by Age, Sex, and Education Level",
+    x = "Age (years)",
+    y = "Total Activity"
+  )
+
+data_prob_2_tidy
+```
+Based on the trend lines, total activity appears to have a relatively similar distribution by age, sex, and education level. Those with less than high school education level, males have slightly greater total activity. Those with high school equivalent and more than high school education level, the trend flips and females have slightly higher total activity levels.
+
+Plot 24 hour activity by education level and sex
+
+```{r}
+data_prob_2_long = data_prob_2 |>
+  pivot_longer(
+    cols = starts_with("min"),
+    names_to = "minute",
+    names_prefix = "min",
+    values_to = "activity"
+  ) |>
+  mutate(
+    minute = as.numeric(minute),
+    hour = (minute - 1) / 60
+  )
+
+data_prob_2_long |>
+ group_by(education_level, sex, hour) |>
+  summarize(mean_activity = mean(activity), .groups = "drop") |>
+  ggplot(aes(x = hour, y = mean_activity, color = sex)) +
+  geom_line(alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~ education_level, ncol = 1) +
+    scale_x_continuous(breaks = seq(0, 24, 6)) +
+  labs(
+    title = "Average 24-hour Activity by Education Level and Sex",
+    x = "Hour of day",
+    y = "Mean activity",
+    color = "Sex"
+  )
+
+```
+Plotting every participant’s activity made the trends hard to see, because a few extreme values stretched the y-axis and compressed the group patterns. Instead, I plotted the mean activity at each minute of the day for each education level and sex, with a smooth trend overlaid. This zoomed the plot in on the typical pattern. Across all education levels and both sexes, activity follows a similar daily shape: it is lowest overnight, rises in the morning, stays fairly steady through the day, and declines in the evening. The trend lines for men and women are close together within each education level, and the education levels look similar to each other, so there is little visible difference in total activity stratified by sex or education.
+
