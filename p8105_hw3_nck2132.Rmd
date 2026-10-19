@@ -35,7 +35,7 @@ scale_fill_discrete = scale_fill_viridis_d
 
 #Question 1
 
-```{r, Load Data}
+```{r, Load Data NY NOAA}
 data("ny_noaa")
 ```
 
@@ -71,8 +71,18 @@ nrow(ny_noaa_clean)
 ncol(ny_noaa_clean) 
 names(ny_noaa_clean)
 ```
-
+ 
 The NOAA dataset contains weather data from National Oceanic and Atmospheric Association (NOAA) in New York. It has `r nrow(ny_noaa_clean)` observations and `r ncol(ny_noaa_clean)` with variables `r names(ny_noaa_clean)`. There is no missing data for weather station ID, year, month, or day. Missing data is a significant issue for the other variables: `r with(ny_noaa_clean, round(mean(is.na(prcp_mm)) * 100, 1))`% of precipitation, `r with(ny_noaa_clean, round(mean(is.na(snowfall_mm)) * 100, 1))`% of snowfall, `r with(ny_noaa_clean, round(mean(is.na(snow_depth_mm)) * 100, 1))`% of snow depth, `r with(ny_noaa_clean, round(mean(is.na(tmax_c)) * 100, 1))`% of maximum temperature, and `r with(ny_noaa_clean, round(mean(is.na(tmin_c)) * 100, 1))`% of minimum temperature values are missing.
+
+
+```{r}
+snowfall_most=
+ny_noaa_clean |>
+  count(snowfall_mm, sort = TRUE) |>
+  slice_head(n = 1)
+snowfall_most
+```
+The most commonly observed value for `r snowfall_most`is 0 because snowfall is not very common in NYC. Most days throughout the year there is no snow accumulation. Although most of the winter it is cold enough to snow most of the time it does not.
 
 ```{r, Jan vs July Plot}
 ny_noaa_clean |>
@@ -169,13 +179,13 @@ nhanes_covar_tidy = nhanes_covar |>
 
 Join Datasets
 
-```{r Clean}
+```{r Join Nhanes}
 data_prob_2 = inner_join(nhanes_covar_tidy, nhanes_accel_tidy, by = "seqn")
 ```
 
 Table + visualization
 
-```{r Plot}
+```{r Table Edu by Gender}
 edu_by_gender = 
 data_prob_2 |>
   count(education_level, sex) |>
@@ -184,9 +194,10 @@ data_prob_2 |>
     values_from = n,
     values_fill = 0
   ) 
+edu_by_gender
 ```
 
-```{r}
+```{r Plot Edu by Gender}
 edu_by_age_gender = data_prob_2 |>
   ggplot(aes(x = age, fill = sex)) +
   geom_histogram(binwidth = 5, alpha = 0.6, position = "identity") +
@@ -201,9 +212,9 @@ edu_by_age_gender = data_prob_2 |>
 edu_by_age_gender
 ```
 
-In general, there are more women than males that have more than high school education and high school equivalent and males appear to be relatively younger in the dataset as well compared to females. Less than high school education level, appears to be simlarly distributed by age and gender.  
+In general, there are more women than males that have more than high school education and less than high school education. Males appear to be relatively younger in the less than high school and high school equivalent education levels as well compared to females. There are more males than females that have a high school equivalent. The most similar educational category by gender was less than high school, but when looking at this distribution by age as well slight differences in distribution emerge.
 
-```{r CLean}
+```{r Total Activity Var}
 data_prob_2_tidy = data_prob_2 |>
   mutate(total_activity = rowSums(across(starts_with("min")))) |> 
   select(seqn, sex, age, bmi, education_level, total_activity) |> 
@@ -221,7 +232,7 @@ data_prob_2_tidy = data_prob_2 |>
 
 data_prob_2_tidy
 ```
-Based on the trend lines, total activity appears to have a relatively similar distribution by age, sex, and education level. Those with less than high school education level, males have slightly greater total activity. Those with high school equivalent and more than high school education level, the trend flips and females have slightly higher total activity levels.
+Based on the trend lines, total activity appears to have a relatively similar distribution by age, sex, and education level. In those with an education level less than high school, males have slightly greater total activity. Interestingly those with high school equivalent and more than high school education levels, the trend flips and females have slightly higher total activity levels.
 
 Plot 24 hour activity by education level and sex
 
@@ -261,7 +272,7 @@ Plotting every participant’s activity made the trends hard to see, because a f
 
 Load Data Sets
 
-```{r Load}
+```{r Load Citi Data} 
 citi_jan2020 = read_csv("data/citibike/Jan 2020 Citi.csv")
 citi_jan2024 = read_csv("data/citibike/Jan 2024 Citi.csv")
 citi_july2020 = read_csv("data/citibike/July 2020 Citi.csv")
@@ -299,7 +310,7 @@ citi_data = bind_rows(
 ```
 
 Plot
-```{r Table1}
+```{r Citi Table1}
 citi_data_table=
 citi_data |> 
  count(year, month, member_casual) |> 
@@ -352,7 +363,7 @@ citi_data_plot = citi_data |>
 citi_data_plot
 ```
 
-This plot highlights that ride duration are consistently longer in 2020 and similarly rides are longer in July as compared to January. The longest ride consistent over time were July 2020. This is interesting because I would have expected ride durations to be longer in 2024 when there was less restrictions due to COVID-19.
+This plot highlights that median ride duration are consistently longer in 2020 than 2024 and rides are consistently longer in July as compared to January. The longest median ride consistent durations over time were July 2020. This is interesting because I would have expected ride durations to be longer in 2024 when there was less restrictions due to COVID-19.
 
 ```{r Ride Duration Plot2}
 citi_2024_plot = citi_data |>
@@ -368,4 +379,4 @@ citi_2024_plot = citi_data |>
   )
 citi_2024_plot
 ```
-The distribution of ride duration is pretty similar between bike type (classic and electric), rider type (casual and member), and months January and July. The ride duration was consistently longer for casual riders across months and bike type. Similarly, July had longer or about the same ride durations across months and rider type. Members had a ride duration distribution that stayed relatively the same across months and bike type. 
+The distribution of ride duration is pretty similar between bike type (classic and electric), rider type (casual and member), and months January and July. The ride duration distribution was consistently longer for casual riders across months and bike type. Similarly, July had longer or about the same ride duration distribution across months and rider type. Members had a ride duration distribution that stayed relatively the same across months and bike type. 
